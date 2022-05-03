@@ -5,8 +5,17 @@ global:
 testsuite:
   - test:
       name: nothing
-      return_value: 0
+      exit_code: 0
   - test:
       name: input
-
-      return_value: 0
+      stdin: im a test
+      exit_code: 0
+  - test:
+      name: comparing
+      stdin: ill be compared
+      stdout: ill be compared
+      exit_code: 0
+  - test:
+      name: cat_failing
+      args: not_a_file
+      exit_code: 1

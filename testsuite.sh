@@ -32,8 +32,15 @@ STDERR=
 TIMEOUT=
 FATAL=
 
+remove_comments () {
+    # Removes comments and removes '\' when escaping '#'
+    eval "$1=$(echo \$$1 | sed 's/\([^\]\)#.*$/\1/g')"
+    eval "$1=$(echo \$$1 | sed 's/\\#/#/g')"
+}
+
 parse_global_options () {
     while IFS= read -r line; do
+        remove_comments line
         # Strip line
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
         current="$(echo $line | cut --delimiter=' ' -f 1)"
@@ -62,13 +69,16 @@ parse_global_options () {
 }
 
 parse_test () {
-    #IFS= read -r line
-    #if [ "$line" != "- test:" ]; then
-    #    echo -e "${RED}Wrong file format, aborting..."
-    #    exit 2
-    #fi
+    # Reseting variables
+    ARGS=
+    STDIN=
+    STDOUT=
+    STDERR=
+    TIMEOUT=
+    FATAL=
 
     while IFS= read -r line; do
+        remove_comments line
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
         current="$(echo $line | cut --delimiter=' ' -f 1)"
         case "$current" in
@@ -108,21 +118,35 @@ parse_test () {
     done
 }
 
-
-
-log_to_file () {
+log_testsuite_to_file () {
     {
-        echo "  - result:"
-        echo "    name: $NAME"
-        echo "    command: $BINARY $ARGS"
-        echo "    returned: $RETURNED"
-        echo "    expected: $EXIT_CODE"
-        echo "    stdout: |"
-        cat /tmp/tmp.out
-        echo
-        echo "    stderr: |"
-        cat /tmp/tmp.err
-        echo
+        echo "testuite:"
+        echo "  name: ${TESTSUITE_NAME}"
+        echo "  tests:"
+    } >> testsuite_log.yaml
+}
+
+log_test_to_file () {
+    {
+        echo "    - result:"
+        echo "        name: $NAME"
+        echo "        command: $BINARY $ARGS"
+        echo "        returned: $RETURNED"
+        echo "        expected: $EXIT_CODE"
+
+        echo "        stdout: | # $(cat /tmp/tmp.out | wc -l)"
+        if [ -s /tmp/tmp.out ]; then
+            while IFS= read -r out; do
+                echo $out | sed "s/^/           /g"
+            done < /tmp/tmp.out
+        fi
+
+        echo "        stderr: | # $(cat /tmp/tmp.err | wc -l)"
+        if [ -s /tmp/tmp.err ]; then
+            while IFS= read -r err; do
+                echo $out | sed "s/^/           /g"
+            done < /tmp/tmp.err
+        fi
     } >> testsuite_log.yaml
 }
 
@@ -136,12 +160,14 @@ run_testsuite () {
         echo -e "${BLUE}========================================="
         echo -e "${BLUE}|| ${NC}Testsuite: $TESTSUITE_NAME"
         echo -e "${BLUE}=========================================${NC}"
+        log_testsuite_to_file
         failed='0'
         succeeded='0'
         total='0'
         while IFS= read -r line && [ "$line" != "testsuite:" ]; do echo $line; continue; done
 
         while IFS= read -r line; do
+            remove_comments line
             # Strip the line
             line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
             if [ "$line" = "- test:" ]; then
@@ -163,13 +189,14 @@ run_testsuite () {
                 echo -e "${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
                 total_succeed=$((total_succeed + 1))
                 succeeded=$((succeeded + 1))
-                log_to_file
+                log_test_to_file
             else
                 echo -e "${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
-                log_to_file
+                log_test_to_file
             fi
+            total=$((total + 1))
         done
 
         # Recap/end of current testsuite
@@ -177,12 +204,13 @@ run_testsuite () {
         echo -e "${NC}Tests succeeded: ${GREEN}$((succeeded))"
         echo -e "${NC}Tests failed: ${RED}$((failed))"
         if [ "$failed" -eq '0' ]; then
-            echo -e "${NC}Total: ${GREENB}$(((total - failed) * 100 / total))%${NC}"
+            echo -e "${NC}Total: ${GREENB}$(((succeeded) * 100 / total))%${NC}"
         elif [ "$failed" -ne "$total" ]; then
-            echo -e "${NC}Total: ${ORANGE}$(((total - failed) * 100 / total))%${NC}"
+            echo -e "${NC}Total: ${ORANGE}$(((succeeded) * 100 / total))%${NC}"
         else
-            echo -e "${NC}Total: ${REDB}$(((total - failed) * 100 / total))%${NC}"
+            echo -e "${NC}Total: ${REDB}$(((succeeded) * 100 / total))%${NC}"
         fi
+        total_tests=$((total_tests + total))
         return "$failed"
     } < "$1"
 }
@@ -194,7 +222,7 @@ run_all_args() {
         run_testsuite $test_file
     done
     echo -e "${BLUEB}==================================================="
-    echo -e "${BLUEB}|| ${NC}Tests succeeded: ${GREEN}$((total_tests-total_failed))"
+    echo -e "${BLUEB}|| ${NC}Tests succeeded: ${GREEN}$((total_succeed))"
     echo -e "${BLUEB}|| ${NC}Tests failed: ${RED}$((total_failed))"
     echo -ne "${BLUEB}|| "
     if [ "$total_tests" -eq '0' ]; then
