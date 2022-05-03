@@ -38,7 +38,7 @@ Here is the list of settings for each tests:
 You must first write global options, followed by an empty line.
 You then need to start a 'testsuite' section in which you will write your tests.
 Each test **MUST** finish with the 'exit_code' parameter:
-```
+```yaml
 global:
   binary: __binary__
   testsuite_name: __name__
