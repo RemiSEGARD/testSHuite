@@ -1,0 +1,12 @@
+global:
+  binary: cat
+  testsuite_name: cat_sample2
+
+testsuite:
+  - test:
+      name: nothing
+      return_value: 0
+  - test:
+      name: input
+
+      return_value: 0

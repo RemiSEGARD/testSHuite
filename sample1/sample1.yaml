@@ -1,0 +1,25 @@
+global:
+  binary: echo
+  testsuite_name: sample1_echo
+
+testsuite:
+  - test:
+      name: test1
+      args: -n im a test
+      exit_code: 0
+  - test:
+      name: test2
+      args: -n ich bin ein test
+      stdout: ich bin ein test
+      fatal: true
+      exit_code: 0
+  - test:
+      name: color
+      args: -e \e[31mje suis un test
+      fatal: false
+      exit_code: 0
+  - test:
+      name: nocolor
+      args: \e[31mje suis un test
+      fatal: false
+      exit_code: 0
