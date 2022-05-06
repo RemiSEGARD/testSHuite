@@ -18,6 +18,7 @@ Here is the list of global settings:
  - **binary**: Path to the binary for the testsuite
  - *testsuite_name*: Name of the testsuite. Defaults\ to the name of the yaml file
  - *ref*: Name of the reference binary
+ - *variables*: Allows you to declare variables in a list, see below for more informations
 
 ### Tests-specific setting
 
@@ -30,6 +31,26 @@ Here is the list of settings for each tests:
  - *stdin*: Input string to write in the standart input of the program
  - *stdout*: Expected output of the program. Ignored if *ref* is set
  - *stderr*: Expected error output of the program. Ignored if *ref* is set
+
+### Variables
+
+You can use variables in order to avoid typing the same thing many times.
+To do so, add in the *variables* sections of your global options the variables of your choice:
+```yaml
+global:
+  variables:
+    - path: /usr/bin/
+    - args: -iam --an-argument
+```
+
+Variables can only be expanded in the tests. To do so, you have to put the name of the variable inside "<<>>"
+```yaml
+...
+  - test:
+      name: test
+      args: <<path>>bash <<args>> # will expand to /usr/bin/bash -iam --an-argument
+```
+
 
 ### File format
 
