@@ -355,6 +355,13 @@ run_all_args() {
     echo -e "${BLUEB}===================================================${NC}"
 }
 
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage:"
+    echo "    ./testsuite.sh [directories ...]          Run the testsuite with the given argument"
+    echo "    ./testsuite.sh -h|--help                  Shows this"
+    exit 0
+fi
+
 if [ -f "testsuite_log.yaml" ]; then
     rm testsuite_log.yaml
 fi

@@ -5,8 +5,12 @@ testSHuite is a functional test written in Shell
 ## Usage
 
 ```
-./testsuite.sh [folders ...]
+./testsuite.sh [directories ...]          Run the testsuite with the given argument
+./testsuite.sh -h|--help                  Shows this
 ```
+
+testSHuite will automatically look for files in subdirectories ending with the `.yaml` extention.
+If you wish to run only one subdirectory(ies)'s testsuite(s), you can input the directory(ies) in the argument
 
 ## Writing tests
 
@@ -75,3 +79,4 @@ testsuite:
       stdin: ...
       exit_code: 1
 ```
+
