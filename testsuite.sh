@@ -57,9 +57,17 @@ remove_comments () {
     eval "$1=$(echo \$$1 | sed 's/\\#/#/g')"
 }
 
+reset_variables () {
+    for i in $(seq 0 "$(($total_variables - 1))"); do
+        unset _var_$(eval echo \$var_n$i)
+        unset "var_n${i}"
+    done
+    total_variables='0'
+}
+
 add_variable () {
     # I need to make some kind of map, I don't want to use bash lists since
-    # I want to be as close as possible to POSIX-complient (dont ask why)
+    # I want to be as close as possible to POSIX-complient (dont ask why, and i know i'm not)
     # I want to make a variable with an index in the name, linked to the name 
     # of the variable, which i can then expand using eval. 
     # I also need to add a prefix to the variable names to avoid overriding my own variables
@@ -94,9 +102,10 @@ expand_variables () {
 
 parse_global_options () {
     # Resets the content of global parameters
-    #BINARY=
-    #TESTSUITE_NAME=
-    #REF=
+    BINARY=
+    TESTSUITE_NAME=
+    REF=
+    reset_variables
     while true; do
         line_peek
         remove_comments line
@@ -355,6 +364,5 @@ if [ "$#" -eq '0' ]; then
 else
     run_all_args $@
 fi
-
 
 exit $( [ "$total_failed" = '0' ] )
