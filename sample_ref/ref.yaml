@@ -1,0 +1,18 @@
+global:
+  binary: cat
+  ref: bat -p
+  testsuite_name: using_ref
+
+testsuite:
+  - test:
+      name: no_input
+  - test:
+      name: with_input
+      stdin: im the input
+  - test:
+      name: out_ignored
+      stdin: no matter the stdout
+      stdout: this will be ignored
+  - test:
+      name: with_arg
+      args: sample_ref/sample_file

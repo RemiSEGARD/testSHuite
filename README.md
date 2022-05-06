@@ -17,27 +17,27 @@ There are multiple settings you can use to write your tests. Some are **Optional
 Here is the list of global settings:
  - **binary**: Path to the binary for the testsuite
  - *testsuite_name*: Name of the testsuite. Defaults\ to the name of the yaml file
+ - *ref*: Name of the reference binary
 
 ### Tests-specific setting
 
 Here is the list of settings for each tests:
  - **name**: Name of the test
- - **exit_code**: Expected exit code
+ - *exit_code*: Expected exit code. Defaults to 0, ignored if *ref* is set
  - *args*: Argument for the execution of the program
  - *fatal*: Set to *true* to stop the execution of the testsuite if the test fails or *false*. Defaults to *false*
  - *timeout*: Time (in seconds) before the program is forcefully closed and the test is considered failed
  - *stdin*: Input string to write in the standart input of the program
- - *stdout*: Expected output of the program 
- - *stderr*: Expected error output of the program
+ - *stdout*: Expected output of the program. Ignored if *ref* is set
+ - *stderr*: Expected error output of the program. Ignored if *ref* is set
 
 ### File format
 
-**Make sure to follow the instructions below, or the parsing of the file may fail**
+**Make sure to follow the instructions below, or the parsing of the file may fail.**
 **Do not hesitate to refer to the samples in the repository**
 
-You must first write global options, followed by an empty line.
+You must first write global options.
 You then need to start a 'testsuite' section in which you will write your tests.
-Each test **MUST** finish with the 'exit_code' parameter:
 ```yaml
 global:
   binary: __binary__
@@ -47,8 +47,8 @@ testsuite:
   - test:
       name: __test_name1__
       args: __arguments__
-      timeout: 10
       exit_code: 0
+      timeout: 10
   - test:
       name: __test_name2__
       stdin: ...

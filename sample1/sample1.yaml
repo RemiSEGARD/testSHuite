@@ -23,3 +23,7 @@ testsuite:
       args: \e[31mje suis un test
       fatal: false
       exit_code: 0
+  - test:
+      name: wrong_exit_code
+      args: hey
+      exit_code: 1

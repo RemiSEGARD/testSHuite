@@ -16,10 +16,14 @@ total_tests='0'
 total_succeed='0'
 total_failed='0'
 
+# Number of variables set in the testuite
+total_variables='0'
+
 # Non-optional global parameters
 BINARY=
 # Optional global parameters
 TESTSUITE_NAME=
+REF=
 
 # Non-optional parameters for each test
 NAME=
@@ -32,14 +36,69 @@ STDERR=
 TIMEOUT=
 FATAL=
 
+line_pop () {
+    rval=0
+    [ -z "$line_buf" ] && { IFS= read -r line_buf; rval=$? ; }
+    line="$line_buf"
+    line_buf=
+    return "$rval"
+}
+
+line_peek () {
+    rval=0
+    [ -z "$line_buf" ] && { IFS= read -r line_buf; rval=$? ; }
+    line="$line_buf"
+    return "$rval"
+}
+
 remove_comments () {
     # Removes comments and removes '\' when escaping '#'
     eval "$1=$(echo \$$1 | sed 's/\([^\]\)#.*$/\1/g')"
     eval "$1=$(echo \$$1 | sed 's/\\#/#/g')"
 }
 
+add_variable () {
+    # I need to make some kind of map, I don't want to use bash lists since
+    # I want to be as close as possible to POSIX-complient (dont ask why)
+    # I want to make a variable with an index in the name, linked to the name 
+    # of the variable, which i can then expand using eval. 
+    # I also need to add a prefix to the variable names to avoid overriding my own variables
+    # Here's an example:
+    # YAML:
+    #   variables:
+    #     path: i/am/the/path
+    #     args: -iam --the-args
+    #
+    # results in the "map":
+    # var_n0 -> path => _var_path -> "i/am/the/path"
+    # var_n1 -> args => _var_args -> "-iam --the-args"
+
+    # Create a variable to store the name
+    eval "var_n${total_variables}='$1'"
+    # Store the content of the variable
+    eval "_var_$1='$2'"
+    total_variables=$((total_variables + 1))
+}
+
+expand_variables () {
+    for i in $(seq 0 "$(($total_variables - 1))"); do
+        case "$line" in
+            *"<<$(eval echo \$var_n${i})>>"*)
+                expect_var="<<$(eval echo \$var_n${i})>>"
+                var_result="$(eval echo \"\$_var_$(eval echo \"\$var_n${i}\")\" | sed 's/\//\\\//g')"
+                line=$(echo "${line}" | sed "s/$expect_var/$var_result/g")
+                ;;
+        esac
+    done
+}
+
 parse_global_options () {
-    while IFS= read -r line; do
+    # Resets the content of global parameters
+    #BINARY=
+    #TESTSUITE_NAME=
+    #REF=
+    while true; do
+        line_peek
         remove_comments line
         # Strip line
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
@@ -51,21 +110,39 @@ parse_global_options () {
             "testsuite_name:")
                 TESTSUITE_NAME=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
+            "ref:")
+                REF=$(echo $line | cut --delimiter=' ' -f 2-)
+                ;;
+            "variables:")
+                line_pop
+                while true; do
+                    line_peek
+                    case $line in
+                        *-*:*)
+                            add_variable "$(echo $line | sed 's/ *- *\([^:]*\) *:.*/\1/g')" "$(echo $line | sed 's/ *- *\([^:]*\) *: *//g')"
+                            line_pop
+                            ;;
+                        *)
+                            break 2
+                            ;;
+                    esac
+                done
+                ;;
             "")
                 break
                 ;;
             *)
-                echo -e "${RED}Unknown global option \`$(echo $current | sed 's/://g')': aborting..."
+                echo -e "${RED}$(basename $0):L${LINENO}:Unknown global option \`$(echo $current | sed 's/://g')': aborting..."
                 exit 2
                 ;;
         esac
+        line_pop
     done
 
     # If no name was given to the testuite
     if [ -z "$TESTSUITE_NAME" ]; then
         TESTSUITE_NAME="$test_file"
     fi
-    echo $BINARY
 }
 
 parse_test () {
@@ -77,17 +154,19 @@ parse_test () {
     TIMEOUT=
     FATAL=
 
-    while IFS= read -r line; do
+    while true; do
+        line_peek || break
         remove_comments line
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
+        expand_variables
         current="$(echo $line | cut --delimiter=' ' -f 1)"
+        [ "$line" = "- test:" ] && break
         case "$current" in
             "name:")
                 NAME=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
             "exit_code:")
                 EXIT_CODE=$(echo $line | cut --delimiter=' ' -f 2-)
-                break
                 ;;
             "args:")
                 ARGS=$(echo $line | cut --delimiter=' ' -f 2-)
@@ -108,13 +187,14 @@ parse_test () {
                 FATAL=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
             "")
-                break
+                continue
                 ;;
             *)
                 echo -e "${RED}Unnkown option \`$(echo $current | sed 's/://g')': aborting..."
                 exit 2
                 ;;
         esac
+        line_pop
     done
 }
 
@@ -152,8 +232,9 @@ log_test_to_file () {
 
 run_testsuite () {
     {
-        read -r line
+        line_peek
         if [ $line = "global:" ]; then
+            line_pop
             parse_global_options
         fi
 
@@ -166,14 +247,16 @@ run_testsuite () {
         total='0'
         while IFS= read -r line && [ "$line" != "testsuite:" ]; do echo $line; continue; done
 
-        while IFS= read -r line; do
+        while true; do
+            line_peek || break
             remove_comments line
             # Strip the line
             line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
             if [ "$line" = "- test:" ]; then
+                line_pop
                 parse_test
             else
-                echo "run_testsuite: Wrong file format \`$line', aborting..."
+                echo -e "${RED}$(basename $0):L${LINENO}: Wrong file format \`$line', aborting...${NC}"
                 exit 2
             fi
             # Execute with timeout if the test has one
@@ -183,15 +266,38 @@ run_testsuite () {
                 timeout $TIMEOUT $BINARY $ARGS <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
             fi
             RETURNED="$?"
+            GOOD_OUTPUT=true
 
+            # Test the outputs
+            if [ ! -z "$REF" ]; then
+                if [ -z "$TIMEOUT" ]; then
+                    $BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/ref.out 2>/tmp/ref.err
+                else
+                    timeout $TIMEOUT $BINARY $ARGS <<< "$STDIN" 1>/tmp/ref.out 2>/tmp/ref.err
+                fi
+                diff -u /tmp/tmp.out /tmp/ref.out || GOOD_OUTPUT=false
+                diff -u /tmp/tmp.err /tmp/ref.err || GOOD_OUTPUT=false
+            else
+                if [ ! -z "$STDOUT" ]; then
+                    echo $STDOUT | diff -u /tmp/tmp.out - >/dev/null || GOOD_OUTPUT=false
+                fi
+                if [ ! -z "$STDERR" ]; then
+                    echo $STDERR | diff -u /tmp/tmp.err - >/dev/null || GOOD_OUTPUT=false
+                fi
+            fi
             # Recap of each test
-            if [ "$RETURNED" = "$EXIT_CODE" ]; then
+            if [ "$RETURNED" = "$EXIT_CODE" ] && $GOOD_OUTPUT; then
                 echo -e "${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
                 total_succeed=$((total_succeed + 1))
                 succeeded=$((succeeded + 1))
                 log_test_to_file
-            else
+            elif $GOOD_OUTPUT; then
                 echo -e "${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
+                total_failed=$((total_failed + 1))
+                failed=$((failed + 1))
+                log_test_to_file
+            else
+                echo -e "${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file

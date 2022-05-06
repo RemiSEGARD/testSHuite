@@ -1,0 +1,16 @@
+global:
+  binary: cat
+  testsuite_name: variable
+  variables:
+    - path: sample_var/deep
+    - args: -e -n
+
+testsuite:
+  - test:
+      name: no_var
+      args: sample_var/deep/deep_file
+      exit_code: 0
+  - test:
+      name: path_var
+      args: <<path>>/deep_file
+      exit_code: 0

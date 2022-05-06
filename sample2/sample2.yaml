@@ -19,3 +19,8 @@ testsuite:
       name: cat_failing
       args: not_a_file
       exit_code: 1
+  - test:
+      name: test_wrong_output
+      stdin: im the input
+      stdout: im the output
+      exit_code: 0
