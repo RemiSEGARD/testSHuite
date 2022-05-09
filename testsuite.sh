@@ -1,5 +1,5 @@
 #!/bin/sh
-# Refer to the samples on TODO to write tests.
+# Refer to the samples to write tests.
 
 # Colors for pretty formatting
 NC="\e[0m"
@@ -93,7 +93,7 @@ expand_variables () {
         case "$line" in
             *"<<$(eval echo \$var_n${i})>>"*)
                 expect_var="<<$(eval echo \$var_n${i})>>"
-                var_result="$(eval echo \"\$_var_$(eval echo \"\$var_n${i}\")\" | sed 's/\//\\\//g')"
+                var_result="$(eval echo \" \"\$_var_$(eval echo \"\$var_n${i}\")\"\" | sed 's/\//\\\//g')"
                 line=$(echo "${line}" | sed "s/$expect_var/$var_result/g")
                 ;;
         esac

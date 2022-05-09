@@ -3,7 +3,7 @@ global:
   testsuite_name: variable
   variables:
     - path: sample_var/deep
-    - args: -e -n
+    - args: -e
 
 testsuite:
   - test:
@@ -14,3 +14,12 @@ testsuite:
       name: path_var
       args: <<path>>/deep_file
       exit_code: 0
+  - test:
+      name: arg_var
+      stdin: the input
+      args: <<args>>
+      exit_code: 0
+  - test:
+      name: undeclared_var
+      args: <<not_a_var>>
+      exit_code: 1
