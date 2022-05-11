@@ -16,6 +16,9 @@ total_tests='0'
 total_succeed='0'
 total_failed='0'
 
+# "Stack" for the indent of the current sections
+section_indent='0'
+
 # Number of variables set in the testuite
 total_variables='0'
 
@@ -27,7 +30,7 @@ REF=
 
 # Non-optional parameters for each test
 NAME=
-EXIT_CODE= # This parameter has to be the last for each test.
+EXIT_CODE=
 # Optional parameters for each test
 ARGS=
 STDIN=
@@ -36,25 +39,32 @@ STDERR=
 TIMEOUT=
 FATAL=
 
+OLDIFS="$IFS"
+
 line_pop () {
+    IFS=
     rval=0
-    [ -z "$line_buf" ] && { IFS= read -r line_buf; rval=$? ; }
+    [ -z "$line_buf" ] && { IFS= read line_buf; rval=$? ; }
     line="$line_buf"
     line_buf=
+    IFS="$OLDIFS"
     return "$rval"
 }
 
 line_peek () {
+    OLDIFS="$IFS"
+    IFS=
     rval=0
     [ -z "$line_buf" ] && { IFS= read -r line_buf; rval=$? ; }
     line="$line_buf"
+    IFS="$OLDIFS"
     return "$rval"
 }
 
 remove_comments () {
     # Removes comments and removes '\' when escaping '#'
-    eval "$1=$(echo \$$1 | sed 's/\([^\]\)#.*$/\1/g')"
-    eval "$1=$(echo \$$1 | sed 's/\\#/#/g')"
+    line="$(echo $line | sed 's/\([^\]\)#.*$/\1/g')"
+    line="$(echo $line | sed 's/\\#/#/g')"
 }
 
 reset_variables () {
@@ -89,15 +99,18 @@ add_variable () {
 }
 
 expand_variables () {
+    IFS=$(echo -e "\t\n ")
     for i in $(seq 0 "$(($total_variables - 1))"); do
         case "$line" in
             *"<<$(eval echo \$var_n${i})>>"*)
+                set +x
                 expect_var="<<$(eval echo \$var_n${i})>>"
                 var_result="$(eval echo \" \"\$_var_$(eval echo \"\$var_n${i}\")\"\" | sed 's/\//\\\//g')"
                 line=$(echo "${line}" | sed "s/$expect_var/$var_result/g")
                 ;;
         esac
     done
+    IFS=
 }
 
 parse_global_options () {
@@ -106,6 +119,9 @@ parse_global_options () {
     TESTSUITE_NAME=
     REF=
     reset_variables
+    section_indent='0'
+    stdout_indent=
+    nb_sections=
     while true; do
         line_peek
         remove_comments line
@@ -169,7 +185,7 @@ parse_test () {
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
         expand_variables
         current="$(echo $line | cut --delimiter=' ' -f 1)"
-        [ "$line" = "- test:" ] && break
+        [ "$line" = "- test:" ] || [ "$line" = "- section:" ] && break
         case "$current" in
             "name:")
                 NAME=$(echo $line | cut --delimiter=' ' -f 2-)
@@ -199,12 +215,24 @@ parse_test () {
                 continue
                 ;;
             *)
-                echo -e "${RED}Unnkown option \`$(echo $current | sed 's/://g')': aborting..."
+                echo -e "${RED}Unknown option \`$(echo $current | sed 's/://g')': aborting..."
                 exit 2
                 ;;
         esac
         line_pop
     done
+
+    if [ -z "$EXIT_CODE" ]; then
+        EXIT_CODE="0"
+    fi
+}
+
+log_section_begin () {
+    return
+}
+
+log_section_end () {
+    return
 }
 
 log_testsuite_to_file () {
@@ -213,6 +241,30 @@ log_testsuite_to_file () {
         echo "  name: ${TESTSUITE_NAME}"
         echo "  tests:"
     } >> testsuite_log.yaml
+}
+
+end_section () {
+    nb_sections="$(echo $section_indent | wc -w)"
+    section_indent="$(echo $section_indent | cut --delimiter=' ' -f -$((nb_sections - 1)))"
+    stdout_indent="$(head -c $(($(echo $section_indent | wc -w) * 2)) < /dev/zero | tr '\0' ' ')"
+}
+
+
+begin_section () {
+    nb_sections="$(echo $section_indent | wc -w)"
+    last_indent="$(echo $section_indent | cut --delimiter=' ' -f $nb_sections)"
+    while [ ! -z "$last_indent" ] && [ "$1" -le "$last_indent" ]; do
+        end_section
+        nb_sections="$(echo $section_indent | wc -w)"
+        last_indent="$(echo $section_indent | cut --delimiter=' ' -f $nb_sections)"
+    done
+    line_pop
+    line_pop
+    line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
+    log_section_begin $(echo $line | cut --delimiter=' ' -f 2-)
+    echo -e "$(head -c $(($(echo $section_indent | wc -w) * 2 - 2)) < /dev/zero | tr '\0' ' ')${BLUE}+--> ${GRAY}$(echo $line | cut --delimiter=' ' -f 2-)${NC}"
+    stdout_indent="$(head -c $(($(echo $section_indent | wc -w) * 2 - 2)) < /dev/zero | tr '\0' ' ')${BLUE}| ${NC}"
+    section_indent="$section_indent $1"
 }
 
 log_test_to_file () {
@@ -240,6 +292,8 @@ log_test_to_file () {
 }
 
 run_testsuite () {
+
+    IFS=
     {
         line_peek
         if [ $line = "global:" ]; then
@@ -260,17 +314,26 @@ run_testsuite () {
             line_peek || break
             remove_comments line
             # Strip the line
+            indent=$(echo $line | sed 's/\( *\).*/\1/g' | wc -c)
             line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
             if [ "$line" = "- test:" ]; then
                 line_pop
                 parse_test
+            elif [ "$line" = "- section:" ]; then
+                begin_section $indent $(echo )
+                continue
+            elif [ "$line" = "testsuite:" ]; then
+                line_pop
+                continue
             else
                 echo -e "${RED}$(basename $0):L${LINENO}: Wrong file format \`$line', aborting...${NC}"
                 exit 2
             fi
             # Execute with timeout if the test has one
+            IFS=$(echo -e "\t\n ")
             if [ -z "$TIMEOUT" ]; then
-                $BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
+                $BINARY $ARGS <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
+                #$BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
             else
                 timeout $TIMEOUT $BINARY $ARGS <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
             fi
@@ -294,19 +357,20 @@ run_testsuite () {
                     echo $STDERR | diff -u /tmp/tmp.err - >/dev/null || GOOD_OUTPUT=false
                 fi
             fi
+            IFS=
             # Recap of each test
             if [ "$RETURNED" = "$EXIT_CODE" ] && $GOOD_OUTPUT; then
-                echo -e "${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
+                echo -e "${stdout_indent}${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
                 total_succeed=$((total_succeed + 1))
                 succeeded=$((succeeded + 1))
                 log_test_to_file
             elif $GOOD_OUTPUT; then
-                echo -e "${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
+                echo -e "${stdout_indent}${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file
             else
-                echo -e "${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
+                echo -e "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file

@@ -8,7 +8,7 @@ testsuite:
       args: -n im a test
       exit_code: 0
   - test:
-      name: test2
+      name: test2 # This test fails because there isn't a '\n' at the end
       args: -n ich bin ein test
       stdout: ich bin ein test
       fatal: true
