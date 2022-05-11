@@ -80,3 +80,29 @@ testsuite:
       exit_code: 1
 ```
 
+You can add sections in a testsuite. A name for each section has to be provided:
+```yaml
+global:
+  binary: echo
+  testsuite_name: sections
+
+testsuite:
+  - section:
+      name: no_arg
+      testsuite:
+        - test:
+            name: firt_no_arg
+            args: firt no arg
+  - section:
+      name: sub_section
+      testsuite:
+        - section:
+            name: first_sub
+            testsuite:
+              - test:
+                  name: fsub_test1
+                  args: fsub test1
+              - test:
+                  name: fsub_test2
+                  args: fsub test2
+```
