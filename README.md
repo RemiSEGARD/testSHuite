@@ -1,6 +1,6 @@
 # testSHuite
 
-testSHuite is a functional test written in Shell
+testSHuite is a functional test tool written in Shell
 
 ## Usage
 
