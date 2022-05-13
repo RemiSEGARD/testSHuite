@@ -11,12 +11,12 @@ testsuite:
       name: test2 # This test fails because there isn't a '\n' at the end
       args: -n ich bin ein test
       stdout: ich bin ein test
-      fatal: true
+      fatal: false
       exit_code: 0
   - test:
       name: color
       args: -e \e[31mje suis un test
-      fatal: false
+      fatal: true
       exit_code: 0
   - test:
       name: nocolor

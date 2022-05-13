@@ -222,6 +222,9 @@ parse_test () {
         line_pop
     done
 
+    if [ -z "$FATAL" ]; then
+        FATAL=false
+    fi
     if [ -z "$EXIT_CODE" ]; then
         EXIT_CODE="0"
     fi
@@ -369,11 +372,13 @@ run_testsuite () {
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file
+                if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
             else
                 echo -e "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file
+                if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
             fi
             total=$((total + 1))
         done
@@ -394,12 +399,7 @@ run_testsuite () {
     } < "$1"
 }
 
-run_all_args() {
-    for dir in $@; do
-        test_file="$(echo ${dir}/*.yaml)"
-        if [ "$test_file" = "${dir}/*.yaml" ]; then continue; fi
-        run_testsuite $test_file
-    done
+print_recap () {
     echo -e "${BLUEB}==================================================="
     echo -e "${BLUEB}|| ${NC}Tests succeeded: ${GREEN}$((total_succeed))"
     echo -e "${BLUEB}|| ${NC}Tests failed: ${RED}$((total_failed))"
@@ -417,6 +417,16 @@ run_all_args() {
         echo -e "${NC}Total: ${REDB}$(((total_tests - total_failed) * 100 / total_tests))%${NC}"
     fi
     echo -e "${BLUEB}===================================================${NC}"
+
+}
+
+run_all_args() {
+    for dir in $@; do
+        test_file="$(echo ${dir}/*.yaml)"
+        if [ "$test_file" = "${dir}/*.yaml" ]; then continue; fi
+        run_testsuite $test_file
+    done
+    print_recap
 }
 
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
