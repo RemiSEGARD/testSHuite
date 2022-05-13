@@ -5,8 +5,10 @@ testSHuite is a functional test written in Shell
 ## Usage
 
 ```
-./testsuite.sh [directories ...]          Run the testsuite with the given argument
-./testsuite.sh -h|--help                  Shows this
+Usage:
+    ./testsuite.sh [directories ...]              Run the testsuite with the given argument
+    ./testsuite.sh --html [directories ...]       Runs the testsuite, outputing in an html file 'output.html'
+    ./testsuite.sh -h|--help                      Shows this
 ```
 
 testSHuite will automatically look for files in subdirectories ending with the `.yaml` extention.

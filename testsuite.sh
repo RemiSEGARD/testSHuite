@@ -475,8 +475,9 @@ run_all_args() {
 
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "Usage:"
-    echo "    ./testsuite.sh [directories ...]          Run the testsuite with the given argument"
-    echo "    ./testsuite.sh -h|--help                  Shows this"
+    echo "    ./testsuite.sh [directories ...]              Run the testsuite with the given argument"
+    echo "    ./testsuite.sh --html [directories ...]       Runs the testsuite, outputing in an html file 'output.html'"
+    echo "    ./testsuite.sh -h|--help                      Shows this"
     exit 0
 fi
 
