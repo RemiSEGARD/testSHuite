@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* {
+    font-family: monospace;
+}
+
+.collapsible {
+  background-color: #777 !important;
+  color: white;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+  font-weight: bolder;
+}
+
+.active, .collapsible:hover {
+  background-color: #555;
+}
+
+.collapsible:after {
+  content: '\002B';
+  color: white;
+  font-weight: bold;
+  float: right;
+  margin-left: 5px;
+}
+
+.active:after {
+  content: "\2212";
+}
+
+.hide {
+  display: none;
+}
+
+.content {
+  padding: 0 18px;
+  margin-top: 0;
+  white-space: pre-wrap;
+  max-height: 0;
+  overflow: hidden;
+  border-style: groove;
+  background-color: #f1f1f1;
+}
+
+.nospace {
+  white-space: normal !important;
+}
+
+.succeeded {
+  color: rgb(0, 192, 0);
+}
+
+.failed {
+  color: rgb(233, 0, 0);
+}
+
+.orange {
+  color: rgb(233, 233, 0);
+}
+
+.grid-containter {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    gap: 20px;
+    grid-auto-rows: minmax(0px, auto);
+    padding-right: inherit;
+}
+
+.stdout {
+    grid-column: 1/2;
+    grid-row: 1/2;
+}
+
+.stderr {
+    grid-column: 2/3;
+    grid-row: 1/2;
+}
+
+textarea {
+  width: 100%;
+  min-height: fit-content;
+  resize: none;
+}
+</style>
+</head>
+<body>

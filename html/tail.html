@@ -1,0 +1,49 @@
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+      coll[i].addEventListener("click", function() {
+        this.classList.toggle("active");
+        var content = this.nextElementSibling;
+        if (content.style.maxHeight){
+          content.style.maxHeight = null;
+        } else {
+          content.style.maxHeight = "fit-content";
+        }
+      });
+    }
+
+    var testsuites = document.getElementsByClassName("testsuite");
+    for (var i = 0; i < testsuites.length; i++) {
+      var tests = testsuites[i].nextElementSibling.getElementsByClassName("test");
+      console.log(tests);
+      var nb_success = 0;
+      for (var j = 0; j < tests.length; j++) {
+        if (tests[j].classList.contains("succeeded")) {
+          nb_success++;
+        }
+      }
+      testsuites[i].innerText += "  " + nb_success + "/" + tests.length;
+      testsuites[i].classList.add(nb_success == tests.length ? "succeeded" : "failed");
+    }
+
+    var testsuites = document.getElementsByClassName("section");
+    for (var i = 0; i < testsuites.length; i++) {
+      var tests = testsuites[i].nextElementSibling.getElementsByClassName("test");
+      console.log(tests);
+      var nb_success = 0;
+      for (var j = 0; j < tests.length; j++) {
+        if (tests[j].classList.contains("succeeded")) {
+          nb_success++;
+        }
+      }
+      testsuites[i].innerText += "  " + nb_success + "/" + tests.length;
+      testsuites[i].classList.add(nb_success == tests.length ? "succeeded" : "failed");
+    }
+
+
+
+</script>
+</body>
+</html>

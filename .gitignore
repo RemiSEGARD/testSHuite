@@ -1,3 +1,6 @@
 # Log output of the tests
 *log*
+*.html
+!html/head.html
+!html/tail.html
 TODO.md

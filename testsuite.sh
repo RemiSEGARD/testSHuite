@@ -22,6 +22,8 @@ section_indent='0'
 # Number of variables set in the testuite
 total_variables='0'
 
+HTML_output="false"
+
 # Non-optional global parameters
 BINARY=
 # Optional global parameters
@@ -231,25 +233,40 @@ parse_test () {
 }
 
 log_section_begin () {
-    return
+    if $HTML_output; then
+        echo "<button class=\"collapsible section\">$1</button>"
+        echo "<div class=\"content\">"
+    fi >&3
 }
 
 log_section_end () {
-    return
+    if $HTML_output; then
+        echo "</div>"
+    fi >&3
+}
+
+log_testsuite_end_to_file () {
+    if $HTML_output; then
+        echo "</div>"
+    fi >&3
 }
 
 log_testsuite_to_file () {
-    {
+    if $HTML_output; then
+        echo "<button class=\"collapsible testsuite\">$TESTSUITE_NAME</button>"
+        echo "<div class=\"content\">"
+    else
         echo "testuite:"
         echo "  name: ${TESTSUITE_NAME}"
         echo "  tests:"
-    } >> testsuite_log.yaml
+    fi >&3
 }
 
 end_section () {
     nb_sections="$(echo $section_indent | wc -w)"
     section_indent="$(echo $section_indent | cut --delimiter=' ' -f -$((nb_sections - 1)))"
     stdout_indent="$(head -c $(($(echo $section_indent | wc -w) * 2)) < /dev/zero | tr '\0' ' ')"
+    log_section_end
 }
 
 
@@ -271,7 +288,29 @@ begin_section () {
 }
 
 log_test_to_file () {
-    {
+    if $HTML_output; then
+        echo "<button class=\"collapsible $1 test\">$NAME</button>"
+        echo "<div class=\"content\">"
+
+        echo "<div class=\"grid-containter nospace\">" # open grid
+
+        echo "<div class=\"stdout\">"
+        echo "<button class=\"collapsible \">STDOUT</button>"
+        echo "<div class=\"content\">"
+        cat "/tmp/tmp.out"
+        echo "</div>"
+        echo "</div>"
+
+        echo "<div class=\"stderr\">"
+        echo "<button class=\"collapsible \">STDERR</button>"
+        echo "<div class=\"content\">"
+        cat "/tmp/tmp.err"
+        echo "</div>"
+        echo "</div>"
+
+        echo "</div>"
+        echo "</div>"
+    else
         echo "    - result:"
         echo "        name: $NAME"
         echo "        command: $BINARY $ARGS"
@@ -291,7 +330,7 @@ log_test_to_file () {
                 echo $out | sed "s/^/           /g"
             done < /tmp/tmp.err
         fi
-    } >> testsuite_log.yaml
+    fi >&3
 }
 
 run_testsuite () {
@@ -366,18 +405,18 @@ run_testsuite () {
                 echo -e "${stdout_indent}${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
                 total_succeed=$((total_succeed + 1))
                 succeeded=$((succeeded + 1))
-                log_test_to_file
+                log_test_to_file "succeeded"
             elif $GOOD_OUTPUT; then
                 echo -e "${stdout_indent}${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
-                log_test_to_file
+                log_test_to_file "failed"
                 if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
             else
                 echo -e "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
-                log_test_to_file
+                log_test_to_file "failed"
                 if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
             fi
             total=$((total + 1))
@@ -395,6 +434,10 @@ run_testsuite () {
             echo -e "${NC}Total: ${REDB}$(((succeeded) * 100 / total))%${NC}"
         fi
         total_tests=$((total_tests + total))
+        for _ in $(seq $(echo $section_indent | wc -w)); do # for each remaining opened section
+            log_section_end
+        done
+        log_testsuite_end_to_file
         return "$failed"
     } < "$1"
 }
@@ -417,7 +460,8 @@ print_recap () {
         echo -e "${NC}Total: ${REDB}$(((total_tests - total_failed) * 100 / total_tests))%${NC}"
     fi
     echo -e "${BLUEB}===================================================${NC}"
-
+    $HTML_output && cat "html/tail.html" >&3
+    exec 3>&- # close fd
 }
 
 run_all_args() {
@@ -436,8 +480,16 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     exit 0
 fi
 
-if [ -f "testsuite_log.yaml" ]; then
-    rm testsuite_log.yaml
+[ -f "testsuite_log.yaml" ] && rm testsuite_log.yaml
+[ -f "output.html" ] && rm output.html
+
+if [ "$1" = "--html" ]; then
+    HTML_output="true"
+    exec 3>>output.html
+    cat "html/head.html" >&3
+    shift
+else
+    exec 3>>testsuite_log.yaml
 fi
 
 if [ "$#" -eq '0' ]; then
