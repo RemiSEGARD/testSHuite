@@ -1,6 +1,6 @@
 # testSHuite
 
-testSHuite is a functional test tool written in Shell
+testSHuite is a POSIX-complient functional test tool written in Shell
 
 ## Usage
 
@@ -37,6 +37,7 @@ Here is the list of settings for each tests:
  - *stdin*: Input string to write in the standart input of the program
  - *stdout*: Expected output of the program. Ignored if *ref* is set
  - *stderr*: Expected error output of the program. Ignored if *ref* is set
+ - *artifact*: Writes the stdout in a file with the given name, so it can be used for later tests. All artifacts are removed at the end of the testsuite.
 
 ### Variables
 

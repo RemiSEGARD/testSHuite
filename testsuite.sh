@@ -2,15 +2,15 @@
 # Refer to the samples to write tests.
 
 # Colors for pretty formatting
-NC="\e[0m"
-RED="$NC\e[31m"
-REDB="$NC\e[31;1m"
-ORANGE="$NC\e[33m"
-GREEN="$NC\e[32m"
-GREENB="$NC\e[32;1m"
-BLUE="$NC\e[36m"
-BLUEB="$NC\e[36;1m"
-GRAY="$NC\e[30;1m"
+NC="\033[30;0m"
+RED="$NC\033[31m"
+REDB="$NC\033[31;1m"
+ORANGE="$NC\033[33m"
+GREEN="$NC\033[32m"
+GREENB="$NC\033[32;1m"
+BLUE="$NC\033[36m"
+BLUEB="$NC\033[36;1m"
+GRAY="$NC\033[30;1m"
 
 total_tests='0'
 total_succeed='0'
@@ -23,6 +23,7 @@ section_indent='0'
 total_variables='0'
 
 HTML_output="false"
+artifacts=
 
 # Non-optional global parameters
 BINARY=
@@ -46,7 +47,7 @@ OLDIFS="$IFS"
 line_pop () {
     IFS=
     rval=0
-    [ -z "$line_buf" ] && { IFS= read line_buf; rval=$? ; }
+    [ -z "$line_buf" ] && { IFS= read -r line_buf; rval=$? ; }
     line="$line_buf"
     line_buf=
     IFS="$OLDIFS"
@@ -79,7 +80,7 @@ reset_variables () {
 
 add_variable () {
     # I need to make some kind of map, I don't want to use bash lists since
-    # I want to be as close as possible to POSIX-complient (dont ask why, and i know i'm not)
+    # I want to be POSIX-complient
     # I want to make a variable with an index in the name, linked to the name 
     # of the variable, which i can then expand using eval. 
     # I also need to add a prefix to the variable names to avoid overriding my own variables
@@ -101,11 +102,10 @@ add_variable () {
 }
 
 expand_variables () {
-    IFS=$(echo -e "\t\n ")
+    IFS=$(printf "\t\n ")
     for i in $(seq 0 "$(($total_variables - 1))"); do
         case "$line" in
             *"<<$(eval echo \$var_n${i})>>"*)
-                set +x
                 expect_var="<<$(eval echo \$var_n${i})>>"
                 var_result="$(eval echo \" \"\$_var_$(eval echo \"\$var_n${i}\")\"\" | sed 's/\//\\\//g')"
                 line=$(echo "${line}" | sed "s/$expect_var/$var_result/g")
@@ -129,7 +129,7 @@ parse_global_options () {
         remove_comments line
         # Strip line
         line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
-        current="$(echo $line | cut --delimiter=' ' -f 1)"
+        current="$(echo $line | sed 's/\n/\\n/g' | cut --delimiter=' ' -f 1)"
         case "$current" in
             "binary:")
                 BINARY=$(echo $line | cut --delimiter=' ' -f 2-)
@@ -159,7 +159,7 @@ parse_global_options () {
                 break
                 ;;
             *)
-                echo -e "${RED}$(basename $0):L${LINENO}:Unknown global option \`$(echo $current | sed 's/://g')': aborting..."
+                printf "${RED}$(basename $0):L${LINENO}:Unknown global option \`$(echo $current | sed 's/://g')': aborting...\n"
                 exit 2
                 ;;
         esac
@@ -180,13 +180,14 @@ parse_test () {
     STDERR=
     TIMEOUT=
     FATAL=
+    ARTIFACT=
 
     while true; do
         line_peek || break
+        line=$(printf "$line" | sed 's/^ *//g' | sed 's/ *$//g' | sed -z 's/\n/\\n/g' | sed 's/\(\\.\)/\\\1/g')
         remove_comments line
-        line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
         expand_variables
-        current="$(echo $line | cut --delimiter=' ' -f 1)"
+        current="$(echo $line | sed 's/\n/\\n/g' | cut --delimiter=' ' -f 1)"
         [ "$line" = "- test:" ] || [ "$line" = "- section:" ] && break
         case "$current" in
             "name:")
@@ -213,11 +214,14 @@ parse_test () {
             "fatal:")
                 FATAL=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
+            "artifact:")
+                ARTIFACT=$(echo $line | cut --delimiter=' ' -f 2-)
+                ;;
             "")
                 continue
                 ;;
             *)
-                echo -e "${RED}Unknown option \`$(echo $current | sed 's/://g')': aborting..."
+                printf "${RED}Unknown option \`$(echo $current | sed 's/://g')': aborting...\n"
                 exit 2
                 ;;
         esac
@@ -282,7 +286,7 @@ begin_section () {
     line_pop
     line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
     log_section_begin $(echo $line | cut --delimiter=' ' -f 2-)
-    echo -e "$(head -c $(($(echo $section_indent | wc -w) * 2 - 2)) < /dev/zero | tr '\0' ' ')${BLUE}+--> ${GRAY}$(echo $line | cut --delimiter=' ' -f 2-)${NC}"
+    printf "$(head -c $(($(echo $section_indent | wc -w) * 2 - 2)) < /dev/zero | tr '\0' ' ')${BLUE}+--> ${GRAY}$(echo $line | cut --delimiter=' ' -f 2-)${NC}\n"
     stdout_indent="$(head -c $(($(echo $section_indent | wc -w) * 2 - 2)) < /dev/zero | tr '\0' ' ')${BLUE}| ${NC}"
     section_indent="$section_indent $1"
 }
@@ -343,9 +347,9 @@ run_testsuite () {
             parse_global_options
         fi
 
-        echo -e "${BLUE}========================================="
-        echo -e "${BLUE}|| ${NC}Testsuite: $TESTSUITE_NAME"
-        echo -e "${BLUE}=========================================${NC}"
+        printf "${BLUE}=========================================\n"
+        printf "${BLUE}|| ${NC}Testsuite: $TESTSUITE_NAME\n"
+        printf "${BLUE}=========================================${NC}\n"
         log_testsuite_to_file
         failed='0'
         succeeded='0'
@@ -368,26 +372,27 @@ run_testsuite () {
                 line_pop
                 continue
             else
-                echo -e "${RED}$(basename $0):L${LINENO}: Wrong file format \`$line', aborting...${NC}"
+                printf "${RED}$(basename $0):L${LINENO}: Wrong file format \`$line', aborting...${NC}\n"
                 exit 2
             fi
             # Execute with timeout if the test has one
-            IFS=$(echo -e "\t\n ")
+            IFS=$(printf "\t\n ")
             if [ -z "$TIMEOUT" ]; then
-                $BINARY $ARGS <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
+                echo "$STDIN" | $BINARY $ARGS 1>/tmp/tmp.out 2>/tmp/tmp.err
                 #$BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
             else
-                timeout $TIMEOUT $BINARY $ARGS <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
+                echo "$STDIN" | timeout $TIMEOUT $BINARY $ARGS 1>/tmp/tmp.out 2>/tmp/tmp.err
             fi
             RETURNED="$?"
             GOOD_OUTPUT=true
+            [ ! -z "$ARTIFACT" ] && cat /tmp/tmp.out > "$ARTIFACT" && artifacts="$artifats $ARTIFACT"
 
             # Test the outputs
             if [ ! -z "$REF" ]; then
                 if [ -z "$TIMEOUT" ]; then
-                    $BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/ref.out 2>/tmp/ref.err
+                    echo "$STDIN" | $BINARY $(echo -n $ARGS) 1>/tmp/ref.out 2>/tmp/ref.err
                 else
-                    timeout $TIMEOUT $BINARY $ARGS <<< "$STDIN" 1>/tmp/ref.out 2>/tmp/ref.err
+                    echo "$STDIN" | timeout $TIMEOUT $BINARY $ARGS 1>/tmp/ref.out 2>/tmp/ref.err
                 fi
                 diff -u /tmp/tmp.out /tmp/ref.out || GOOD_OUTPUT=false
                 diff -u /tmp/tmp.err /tmp/ref.err || GOOD_OUTPUT=false
@@ -402,36 +407,36 @@ run_testsuite () {
             IFS=
             # Recap of each test
             if [ "$RETURNED" = "$EXIT_CODE" ] && $GOOD_OUTPUT; then
-                echo -e "${stdout_indent}${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}"
+                printf "${stdout_indent}${GREEN}[   ${GREENB}OK   ${GREEN}] $NC${NAME}\n"
                 total_succeed=$((total_succeed + 1))
                 succeeded=$((succeeded + 1))
                 log_test_to_file "succeeded"
             elif $GOOD_OUTPUT; then
-                echo -e "${stdout_indent}${RED}[   ${REDB}KO   ${RED}] $NC${NAME}"
+                printf "${stdout_indent}${RED}[   ${REDB}KO   ${RED}] $NC${NAME}\n"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file "failed"
-                if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
+                if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
             else
-                echo -e "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}"
+                printf "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}\n"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file "failed"
-                if $FATAL; then echo -e "${REDB}Fatal ${RED} test failed, aborting..." ; print_recap; return 1; fi
+                if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
             fi
             total=$((total + 1))
         done
 
         # Recap/end of current testsuite
-        echo -e "${NC}----------------------------"
-        echo -e "${NC}Tests succeeded: ${GREEN}$((succeeded))"
-        echo -e "${NC}Tests failed: ${RED}$((failed))"
+        printf -- "${NC}----------------------------\n"
+        printf "${NC}Tests succeeded: ${GREEN}$((succeeded))\n"
+        printf "${NC}Tests failed: ${RED}$((failed))\n"
         if [ "$failed" -eq '0' ]; then
-            echo -e "${NC}Total: ${GREENB}$(((succeeded) * 100 / total))%${NC}"
+            printf "${NC}Total: ${GREENB}$(((succeeded) * 100 / total))%%${NC}\n"
         elif [ "$failed" -ne "$total" ]; then
-            echo -e "${NC}Total: ${ORANGE}$(((succeeded) * 100 / total))%${NC}"
+            printf "${NC}Total: ${ORANGE}$(((succeeded) * 100 / total))%%${NC}\n"
         else
-            echo -e "${NC}Total: ${REDB}$(((succeeded) * 100 / total))%${NC}"
+            printf "${NC}Total: ${REDB}$(((succeeded) * 100 / total))%%${NC}\n"
         fi
         total_tests=$((total_tests + total))
         for _ in $(seq $(echo $section_indent | wc -w)); do # for each remaining opened section
@@ -443,25 +448,26 @@ run_testsuite () {
 }
 
 print_recap () {
-    echo -e "${BLUEB}==================================================="
-    echo -e "${BLUEB}|| ${NC}Tests succeeded: ${GREEN}$((total_succeed))"
-    echo -e "${BLUEB}|| ${NC}Tests failed: ${RED}$((total_failed))"
-    echo -ne "${BLUEB}|| "
+    printf "${BLUEB}===================================================\n"
+    printf "${BLUEB}|| ${NC}Tests succeeded: ${GREEN}$((total_succeed))\n"
+    printf "${BLUEB}|| ${NC}Tests failed: ${RED}$((total_failed))\n"
+    printf "${BLUEB}|| "
     if [ "$total_tests" -eq '0' ]; then
-        echo -e "${REDB}No tests run${NC}"
-        echo -e "${BLUEB}==================================================="
+        printf "${REDB}No tests run${NC}\n"
+        printf "${BLUEB}===================================================\n"
         exit 1
     fi
     if [ "$total_failed" -eq '0' ]; then
-        echo -e "${NC}Total: ${GREENB}$(((total_tests - total_failed) * 100 / total_tests))%${NC}"
+        printf "${NC}Total: ${GREENB}$(((total_tests - total_failed) * 100 / total_tests))%%${NC}\n"
     elif [ "$total_failed" -ne "$total_tests" ]; then
-        echo -e "${NC}Total: ${ORANGE}$(((total_tests - total_failed) * 100 / total_tests))%${NC}"
+        printf "${NC}Total: ${ORANGE}$(((total_tests - total_failed) * 100 / total_tests))%%${NC}\n"
     else
-        echo -e "${NC}Total: ${REDB}$(((total_tests - total_failed) * 100 / total_tests))%${NC}"
+        printf "${NC}Total: ${REDB}$(((total_tests - total_failed) * 100 / total_tests))%%${NC}\n"
     fi
-    echo -e "${BLUEB}===================================================${NC}"
+    printf "${BLUEB}===================================================${NC}\n"
     $HTML_output && cat "html/tail.html" >&3
     exec 3>&- # close fd
+    rm $(eval echo $artifacts)
 }
 
 run_all_args() {
@@ -492,9 +498,21 @@ if [ "$1" = "--html" ]; then
 else
     exec 3>>testsuite_log.yaml
 fi
+if [ "$1" = "--no-color" ]; then
+    NC=""
+    RED=""
+    REDB=""
+    ORANGE=""
+    GREEN=""
+    GREENB=""
+    BLUE=""
+    BLUEB=""
+    GRAY=""
+    shift
+fi
 
 if [ "$#" -eq '0' ]; then
-    run_all_args "$(ls -d */)"
+    run_all_args $(ls -d */)
 else
     run_all_args $@
 fi

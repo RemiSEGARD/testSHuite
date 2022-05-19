@@ -24,3 +24,13 @@ testsuite:
       stdin: im the input
       stdout: im the output
       exit_code: 0
+  - test:
+      name: create_artifact
+      stdin: artifact content
+      artifact: arti.fact
+      exit_code: 0
+  - test:
+      name: read_artifact
+      args: arti.fact
+      stdout: artifact content
+      exit_code: 0
