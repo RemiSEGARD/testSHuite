@@ -396,7 +396,7 @@ run_testsuite () {
             # Execute with timeout if the test has one
             IFS=$(printf "\t\n ")
             if [ -z "$TIMEOUT" ]; then
-                echo "$STDIN" | $BINARY $ARGS 1>/tmp/tmp.out 2>/tmp/tmp.err
+                echo "$STDIN" | $BINARY $(echo $ARGS) 1>/tmp/tmp.out 2>/tmp/tmp.err
                 #$BINARY $(echo -n $ARGS) <<< "$STDIN" 1>/tmp/tmp.out 2>/tmp/tmp.err
             else
                 echo "$STDIN" | timeout $TIMEOUT $BINARY $ARGS 1>/tmp/tmp.out 2>/tmp/tmp.err
