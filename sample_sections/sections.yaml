@@ -31,6 +31,44 @@ testsuite:
                   name: ssub_test2
                   args: ssub test2
   - section:
+      name: ended_by_fatal
+      testsuite:
+        - test:
+            name: good
+            args: yes
+        - test:
+            name: fails
+            args: yes
+            stdout: no
+            fatal: true
+        - test:
+            name: you_cant_see_me
+            args: or did you?
+  - section:
+      name: nested_fatal
+      testsuite:
+        - section:
+            name: fatal
+            testsuite:
+              - test:
+                  name: fails
+                  args: fails
+                  exit_code: 1
+                  fatal: true
+              - test:
+                  name: not_executed
+                  args: no executed
+        - section:
+            name: not_fatal
+            testsuite:
+              - test:
+                  name: succeeds
+                  args: doesnt fail
+                  fatal: true
+              - test:
+                  name: actually_executed
+                  args: yes executed
+  - section:
       name: e_arg
       testsuite:
         - test:

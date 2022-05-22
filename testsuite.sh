@@ -181,6 +181,7 @@ parse_test () {
     TIMEOUT=
     FATAL=
     ARTIFACT=
+    EXIT_CODE=
 
     while true; do
         line_peek || break
@@ -273,6 +274,23 @@ end_section () {
     log_section_end
 }
 
+end_current_section () {
+    nb_sections="$(echo $section_indent | wc -w)"
+    last_indent="$(echo $section_indent | cut --delimiter=' ' -f $nb_sections)"
+    while true; do
+        line_peek || break
+        remove_comments line
+        # Strip the line
+        indent=$(echo $line | sed 's/\( *\).*/\1/g' | wc -c)
+        line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
+        if [ "$line" = "- section:" ] && [ "$indent" -le "$last_indent" ]; then
+            break
+        fi
+        line_pop
+    done
+    begin_section $indent
+
+}
 
 begin_section () {
     nb_sections="$(echo $section_indent | wc -w)"
@@ -416,13 +434,15 @@ run_testsuite () {
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file "failed"
-                if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
+                #if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
+                if $FATAL; then end_current_section; fi
             else
                 printf "${stdout_indent}${RED}[  ${REDB}DIFF  ${RED}] $NC${NAME}\n"
                 total_failed=$((total_failed + 1))
                 failed=$((failed + 1))
                 log_test_to_file "failed"
-                if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
+                #if $FATAL; then printf "${REDB}Fatal ${RED} test failed, aborting...\n" ; print_recap; return 1; fi
+                if $FATAL; then end_current_section; fi
             fi
             total=$((total + 1))
         done
@@ -467,7 +487,7 @@ print_recap () {
     printf "${BLUEB}===================================================${NC}\n"
     $HTML_output && cat "html/tail.html" >&3
     exec 3>&- # close fd
-    rm $(eval echo $artifacts)
+    [ ! -z "$artifacts" ] && rm $(eval echo $artifacts)
 }
 
 run_all_args() {

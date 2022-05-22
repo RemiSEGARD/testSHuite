@@ -32,7 +32,7 @@ Here is the list of settings for each tests:
  - **name**: Name of the test
  - *exit_code*: Expected exit code. Defaults to 0, ignored if *ref* is set
  - *args*: Argument for the execution of the program
- - *fatal*: Set to *true* to stop the execution of the testsuite if the test fails or *false*. Defaults to *false*
+ - *fatal*: Set to *true* to stop the execution of the testsuite or the current section if the test fails or *false*. Defaults to *false*
  - *timeout*: Time (in seconds) before the program is forcefully closed and the test is considered failed
  - *stdin*: Input string to write in the standart input of the program
  - *stdout*: Expected output of the program. Ignored if *ref* is set
