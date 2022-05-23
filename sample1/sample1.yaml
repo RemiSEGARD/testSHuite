@@ -24,6 +24,15 @@ testsuite:
       fatal: false
       exit_code: 0
   - test:
+      name: create_artifact
+      args: text content
+      artifact: artif.act
+  - test:
+      name: read_artifact
+      binary: cat
+      args: artif.act
+      stdout: text content
+  - test:
       name: wrong_exit_code
       args: hey
       exit_code: 1

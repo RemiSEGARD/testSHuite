@@ -26,15 +26,16 @@ HTML_output="false"
 artifacts=
 
 # Non-optional global parameters
-BINARY=
+GLOBAL_BINARY=
 # Optional global parameters
 TESTSUITE_NAME=
 REF=
 
 # Non-optional parameters for each test
 NAME=
-EXIT_CODE=
 # Optional parameters for each test
+EXIT_CODE=
+BINARY=
 ARGS=
 STDIN=
 STDOUT=
@@ -117,7 +118,7 @@ expand_variables () {
 
 parse_global_options () {
     # Resets the content of global parameters
-    BINARY=
+    GLOBAL_BINARY=
     TESTSUITE_NAME=
     REF=
     reset_variables
@@ -132,7 +133,7 @@ parse_global_options () {
         current="$(echo $line | sed 's/\n/\\n/g' | cut --delimiter=' ' -f 1)"
         case "$current" in
             "binary:")
-                BINARY=$(echo $line | cut --delimiter=' ' -f 2-)
+                GLOBAL_BINARY=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
             "testsuite_name:")
                 TESTSUITE_NAME=$(echo $line | cut --delimiter=' ' -f 2-)
@@ -175,6 +176,7 @@ parse_global_options () {
 parse_test () {
     # Reseting variables
     ARGS=
+    BINARY="$GLOBAL_BINARY"
     STDIN=
     STDOUT=
     STDERR=
@@ -196,6 +198,9 @@ parse_test () {
                 ;;
             "exit_code:")
                 EXIT_CODE=$(echo $line | cut --delimiter=' ' -f 2-)
+                ;;
+            "binary:")
+                BINARY=$(echo $line | cut --delimiter=' ' -f 2-)
                 ;;
             "args:")
                 ARGS=$(echo $line | cut --delimiter=' ' -f 2-)
@@ -372,7 +377,7 @@ run_testsuite () {
         failed='0'
         succeeded='0'
         total='0'
-        while IFS= read -r line && [ "$line" != "testsuite:" ]; do echo $line; continue; done
+        #while IFS= read -r line && [ "$line" != "testsuite:" ]; do echo $line; continue; done
 
         while true; do
             line_peek || break
