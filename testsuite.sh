@@ -145,14 +145,35 @@ parse_global_options () {
                 line_pop
                 while true; do
                     line_peek
+                    line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
                     case $line in
                         *-*:*)
                             add_variable "$(echo $line | sed 's/ *- *\([^:]*\) *:.*/\1/g')" "$(echo $line | sed 's/ *- *\([^:]*\) *: *//g')"
                             line_pop
                             ;;
-                        *)
+                        "")
                             break 2
                             ;;
+                        *)
+                            break;
+                    esac
+                done
+                ;;
+            "precommands:")
+                line_pop
+                while true; do
+                    line_peek
+                    line=$(echo $line | sed 's/^ *//g' | sed 's/ *$//g')
+                    case $line in
+                        -*)
+                            eval $(echo $line | cut --delimiter=' ' -f 2-)
+                            line_pop
+                            ;;
+                        "")
+                            break 2
+                            ;;
+                        *)
+                            break;
                     esac
                 done
                 ;;

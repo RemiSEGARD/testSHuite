@@ -25,6 +25,7 @@ Here is the list of global settings:
  - *testsuite_name*: Name of the testsuite. Defaults\ to the name of the yaml file
  - *ref*: Name of the reference binary
  - *variables*: Allows you to declare variables in a list, see below for more informations
+ - *precommands*: List of commands to execute before the testsuite starts
 
 ### Tests-specific setting
 
@@ -32,6 +33,7 @@ Here is the list of settings for each tests:
  - **name**: Name of the test
  - *exit_code*: Expected exit code. Defaults to 0, ignored if *ref* is set
  - *args*: Argument for the execution of the program
+ - *binary*: Set a new binary only for this test
  - *fatal*: Set to *true* to stop the execution of the testsuite or the current section if the test fails or *false*. Defaults to *false*
  - *timeout*: Time (in seconds) before the program is forcefully closed and the test is considered failed
  - *stdin*: Input string to write in the standart input of the program
@@ -70,7 +72,9 @@ You then need to start a 'testsuite' section in which you will write your tests.
 global:
   binary: __binary__
   testsuite_name: __name__
- 
+  precommands:
+    - __precommand__
+
 testsuite:
   - test:
       name: __test_name1__

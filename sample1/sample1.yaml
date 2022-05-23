@@ -1,6 +1,9 @@
 global:
   binary: echo
   testsuite_name: sample1_echo
+  precommands:
+    - touch test_precommand
+    - touch test_precommand2
 
 testsuite:
   - test:
@@ -36,3 +39,13 @@ testsuite:
       name: wrong_exit_code
       args: hey
       exit_code: 1
+  - test:
+      name: remove_prec1
+      binary: rm
+      args: test_precommand
+      exit_code: 0
+  - test:
+      name: remove_prec2
+      binary: rm
+      args: test_precommand2
+      exit_code: 0
