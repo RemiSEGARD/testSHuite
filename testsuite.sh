@@ -408,7 +408,7 @@ run_testsuite () {
             fi
             RETURNED="$?"
             GOOD_OUTPUT=true
-            [ ! -z "$ARTIFACT" ] && cat /tmp/tmp.out > "$ARTIFACT" && artifacts="$artifats $ARTIFACT"
+            [ ! -z "$ARTIFACT" ] && cat /tmp/tmp.out > "$ARTIFACT" && artifacts="$artifacts $ARTIFACT"
 
             # Test the outputs
             if [ ! -z "$REF" ]; then
@@ -492,7 +492,11 @@ print_recap () {
     printf "${BLUEB}===================================================${NC}\n"
     $HTML_output && cat "html/tail.html" >&3
     exec 3>&- # close fd
-    [ ! -z "$artifacts" ] && rm $(eval echo $artifacts)
+    IFS=$(printf "\t \n")
+    for artifact in $artifacts; do
+        [ -e "$artifact" ] && rm $artifact
+    done
+    IFS=
 }
 
 run_all_args() {

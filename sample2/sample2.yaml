@@ -34,3 +34,8 @@ testsuite:
       args: arti.fact
       stdout: artifact content
       exit_code: 0
+  - test:
+      name: overwrite_artifact
+      stdin: more artifact
+      artifact: arti.fact
+      exit_code: 0
